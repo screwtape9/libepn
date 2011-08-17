@@ -265,49 +265,49 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
   if (pc->readable) {
     n = recv(pc->fd, &pc->buf[pc->ri], bytes_to_recv, 0);
     switch (n) {
-      case -1:
-        if (errno != EAGAIN) {
-          perror("recv()");
-          pfd = (int *)malloc(sizeof(int));
-          (*pfd) = pc->fd;
-          list_add_to_tail(l, pfd);
-          pfd = 0;
-          ok = 0;
-        }
-        else
-          pc->readable = 0;
-        break;
-      case 0:
-        printf("fd %d has been closed\n", pc->fd);
+    case -1:
+      if (errno != EAGAIN) {
+        perror("recv()");
         pfd = (int *)malloc(sizeof(int));
         (*pfd) = pc->fd;
         list_add_to_tail(l, pfd);
         pfd = 0;
         ok = 0;
-        break;
-      default:
-        pc->ri += n;
-        exp = (int)(*((unsigned short *)pc->buf));
-        if (exp > bufsz) {
-          printf("closing fd %d, expected msg too big\n", pc->fd);
-          pfd = (int *)malloc(sizeof(int));
-          (*pfd) = pc->fd;
-          list_add_to_tail(l, pfd);
-          pfd = 0;
-          ok = 0;
+      }
+      else
+        pc->readable = 0;
+      break;
+    case 0:
+      printf("fd %d has been closed\n", pc->fd);
+      pfd = (int *)malloc(sizeof(int));
+      (*pfd) = pc->fd;
+      list_add_to_tail(l, pfd);
+      pfd = 0;
+      ok = 0;
+      break;
+    default:
+      pc->ri += n;
+      exp = (int)(*((unsigned short *)pc->buf));
+      if (exp > bufsz) {
+        printf("closing fd %d, expected msg too big\n", pc->fd);
+        pfd = (int *)malloc(sizeof(int));
+        (*pfd) = pc->fd;
+        list_add_to_tail(l, pfd);
+        pfd = 0;
+        ok = 0;
+      }
+      else {
+        while ((pc->ri > 2) && (pc->ri >= exp)) {
+          if (epn_msg_rcvd_cb)
+            (*epn_msg_rcvd_cb)((PMSG)pc->buf, (*((epn_client_key *)&pc->key)));
+          memmove(pc->buf, &pc->buf[exp], (pc->ri - exp));
+          pc->ri -= exp;
+          exp = (int)(*((unsigned short *)pc->buf));
         }
-        else {
-          while ((pc->ri > 2) && (pc->ri >= exp)) {
-            if (epn_msg_rcvd_cb)
-              (*epn_msg_rcvd_cb)((PMSG)pc->buf, (*((epn_client_key *)&pc->key)));
-            memmove(pc->buf, &pc->buf[exp], (pc->ri - exp));
-            pc->ri -= exp;
-            exp = (int)(*((unsigned short *)pc->buf));
-          }
-          if (n < bytes_to_recv)
-            pc->readable = 0;
-        }
-        break;
+        if (n < bytes_to_recv)
+          pc->readable = 0;
+      }
+      break;
     }
   }
   
