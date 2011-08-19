@@ -2,7 +2,7 @@ include ../../makefile.common
 
 CFLAGS=-Wall -g
 INCLUDES=-I../../include
-LIBS=-lrt -lpthread -L../../lib -lepn
+LIBS=-lrt -lpthread -L../../lib/release -lepn
 
 %.o: %.c
 	$(CC) $(INCLUDES) $(CFLAGS) -c $<
