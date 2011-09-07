@@ -27,7 +27,12 @@ typedef struct _client {
   int writable;
   int sent;
   char buf[1];
-} __attribute__((packed)) CLIENT, *PCLIENT;
+} CLIENT, *PCLIENT;
+
+typedef struct _qmsg {
+  struct timeval ttl;
+  MSG msg;
+} QMSG, *PQMSG;
 
 static int run = 0;
 static pthread_t tid = 0; 
@@ -40,7 +45,6 @@ static struct rb_table *fd_tree = NULL;
 static struct rb_table *ip_tree = NULL;
 static struct rb_table *key_tree = NULL;
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-/*static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;*/
 
 int (*epn_msg_rcvd_cb)(PMSG msg, epn_client_key key) = NULL;
 int (*epn_client_closed_cb)(epn_client_key key) = NULL;
@@ -50,8 +54,6 @@ static void sig_handler(int sig)
 {
   if (sig != SIGUSR1)
     write(STDOUT_FILENO, "caught unknown signal!\n", 23);
-  /*else
-    write(STDOUT_FILENO, "caught SIGUSR1!\n", 16);*/
 }
 
 static int mask_sigs()
@@ -256,7 +258,8 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
   int ret = 0;
   int n = 0;
   int ok = 1;
-  PMSG pmsg = 0;
+  PQMSG qmsg = 0;
+  struct timeval now = { 0, 0 };
   int bufsz = epn_get_client_buf_sz();
   int bytes_to_recv = (bufsz - pc->ri);
   int exp = 0;
@@ -286,57 +289,69 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
       ok = 0;
       break;
     default:
+      if (n < bytes_to_recv)
+        pc->readable = 0;
       pc->ri += n;
-      exp = (int)(*((unsigned short *)pc->buf));
-      if (exp > bufsz) {
-        printf("closing fd %d, expected msg too big\n", pc->fd);
-        pfd = (int *)malloc(sizeof(int));
-        (*pfd) = pc->fd;
-        list_add_to_tail(l, pfd);
-        pfd = 0;
-        ok = 0;
-      }
-      else {
-        while ((pc->ri > 2) && (pc->ri >= exp)) {
-          if (epn_msg_rcvd_cb)
-            (*epn_msg_rcvd_cb)((PMSG)pc->buf, (*((epn_client_key *)&pc->key)));
-          memmove(pc->buf, &pc->buf[exp], (pc->ri - exp));
-          pc->ri -= exp;
-          exp = (int)(*((unsigned short *)pc->buf));
+      if (pc->ri > 1) {
+        exp = (int)(*((unsigned short *)pc->buf));
+        if (exp > bufsz) {
+          printf("closing fd %d, expected msg too big\n", pc->fd);
+          pfd = (int *)malloc(sizeof(int));
+          (*pfd) = pc->fd;
+          list_add_to_tail(l, pfd);
+          pfd = 0;
+          ok = 0;
         }
-        if (n < bytes_to_recv)
-          pc->readable = 0;
+        else {
+          while ((pc->ri > 2) && (pc->ri >= exp)) {
+            if (epn_msg_rcvd_cb)
+              (*epn_msg_rcvd_cb)((PMSG)pc->buf, (*((epn_client_key *)&pc->key)));
+            memmove(pc->buf, &pc->buf[exp], (pc->ri - exp));
+            pc->ri -= exp;
+            exp = (int)(*((unsigned short *)pc->buf));
+          }
+        }
       }
       break;
     }
   }
   
   if (ok && pc->writable && !queue_is_empty(&pc->msgq)) {
-    queue_peek(&pc->msgq, (void **)&pmsg);
-    n = send(pc->fd, &((char *)pmsg)[pc->sent], ((int)pmsg->len - pc->sent), 0);
-    switch (n) {
-    case -1:
-      if (errno == EAGAIN)
+    queue_peek(&pc->msgq, (void **)&qmsg);
+    gettimeofday(&now, 0);
+    if (timerisset(&qmsg->ttl) && timercmp(&qmsg->ttl, &now, <)) {
+      pc->sent = 0;
+      queue_pop(&pc->msgq);
+      if (queue_is_empty(&pc->msgq))
         pc->writable = 0;
-      else {
-        perror("send()");
-        pfd = (int *)malloc(sizeof(int));
-        (*pfd) = pc->fd;
-        list_add_to_tail(l, pfd);
-        pfd = 0;
+    }
+    else {
+      n = send(pc->fd, &((char *)&qmsg->msg)[pc->sent],
+               ((int)qmsg->msg.len - pc->sent), 0);
+      switch (n) {
+      case -1:
+        if (errno == EAGAIN)
+          pc->writable = 0;
+        else {
+          perror("send()");
+          pfd = (int *)malloc(sizeof(int));
+          (*pfd) = pc->fd;
+          list_add_to_tail(l, pfd);
+          pfd = 0;
+        }
+        break;
+      case 0:
+        printf("bailing out.  handle this...\n");
+        assert(0);
+        break;
+      default:
+        pc->sent += n;
+        if (pc->sent == (int)qmsg->msg.len) {
+          pc->sent = 0;
+          queue_pop(&pc->msgq);
+        }
+        break;
       }
-      break;
-    case 0:
-      printf("bailing out.  handle this...\n");
-      assert(0);
-      break;
-    default:
-      pc->sent += n;
-      if (pc->sent == (int)pmsg->len) {
-        pc->sent = 0;
-        queue_pop(&pc->msgq);
-      }
-      break;
     }
   }
 
@@ -538,17 +553,31 @@ void epn_set_client_accepted_cb(int (*callback)(epn_client_key key))
   epn_client_accepted_cb = callback;
 }
 
-int epn_send_to_client(epn_client_key key, PMSG msg)
+/*int epn_send_to_client(epn_client_key key, PMSG msg)*/
+int epn_send_to_client(epn_client_key key, const PMSG msg,
+                       const unsigned int ttl)
 {
+  PQMSG qmsg = NULL;
   PCLIENT pc = NULL;
   CLIENT c;
+  struct timeval now = { 0, 0 }, diff = { 0, 0 };
   epn_client_key k = key;
 
   memcpy(&c.key, &k, sizeof(c.key));
   pthread_mutex_lock(&mutex);
   pc = (PCLIENT)rb_find(key_tree, &c);
   if (pc) {
-    queue_push(&pc->msgq, msg);
+    qmsg = (PQMSG)malloc(msg->len + sizeof(struct timeval));
+    gettimeofday(&now, 0);
+    if (ttl > 1000) {
+      diff.tv_sec = (ttl / 1000);
+      diff.tv_usec = ((ttl % 1000) * 1000);
+    }
+    else
+      diff.tv_usec = (ttl * 1000);
+    timeradd(&now, &diff, &qmsg->ttl);
+    memcpy(&qmsg->msg, msg, msg->len);
+    queue_push(&pc->msgq, qmsg);
     pthread_mutex_unlock(&mutex);
     pthread_kill(tid, SIGUSR1);
     /*printf("queued to send:  %s\n", msg->buf);*/

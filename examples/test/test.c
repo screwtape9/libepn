@@ -58,15 +58,14 @@ void *thread(void *arg)
       queue_peek(&msgs, (void **)&pkey);
     pthread_mutex_unlock(&mutex);
     if (pkey) {
-      /*printf("RECVD:  %s\n", msg->buf);*/
+      /*printf("RECVD:  %s\n", pkey->pmsg->buf);*/
       resp = malloc(pkey->pmsg->len);
       memcpy(resp, pkey->pmsg, pkey->pmsg->len);
-      if (epn_send_to_client(pkey->ckey, resp)) {
-        free(resp);
+      if (epn_send_to_client(pkey->ckey, resp, 3000))
         printf("could not send back!\n");
-      }
-      //else
-        //printf("sending msg back to sender...\n");
+      /*else
+        printf("sending msg back to sender...\n");*/
+      free(resp);
       resp = NULL;
       pthread_mutex_lock(&mutex);
       queue_pop(&msgs);
@@ -89,7 +88,7 @@ int main(int argc, char *argv[])
   run = 1;
   pthread_create(&tid, 0, thread, 0);
 
-  epn_init("0.0.0.0", 5050, 32, 4096, 0);
+  epn_init("0.0.0.0", 5050, 32, 4096, 0, 1);
   epn_set_msg_rcvd_cb(&msg_rcvd_cb);
   epn_set_client_closed_cb(&client_closed_cb);
   epn_set_client_accepted_cb(&client_accepted_cb);

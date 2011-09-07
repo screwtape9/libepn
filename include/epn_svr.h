@@ -71,9 +71,13 @@ void epn_set_client_accepted_cb(int (*callback)(epn_client_key key));
  *  \brief Queues a MSG to be sent to a client connection.
  *  \param[in] key A key which correlates to a client connection.
  *  \param[in] msg The MSG to send.
+ *  \param[in] ttl Time to live:  the number of millseconds in which to try
+ *  to send the msg out before dropping it.
  *  \return
  */
-int epn_send_to_client(epn_client_key key, PMSG msg);
+/*int epn_send_to_client(epn_client_key key, PMSG msg);*/
+int epn_send_to_client(epn_client_key key, const PMSG msg,
+                       const unsigned int ttl);
 
 #ifdef __cplusplus
 }

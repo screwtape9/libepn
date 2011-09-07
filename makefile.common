@@ -2,5 +2,5 @@ MAKE=gmake
 ARCH=$(shell uname -m)
 
 MAJOR_VERSION		= 1
-MINOR_VERSION		= 0
+MINOR_VERSION		= 1
 PATCH_LEVEL			= 0
