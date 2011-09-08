@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include "epn_cfg.h"
 
-static char *epn_bind_addr = 0;
+static char *epn_bind_addr = NULL;
 static unsigned short epn_bind_port = 0;
 static unsigned int epn_est_events = 0;
 static unsigned int epn_client_buf_sz = 4096;
@@ -70,6 +70,6 @@ void epn_cleanup()
   if (epn_bind_addr) {
     len = strlen(epn_bind_addr);
     free(epn_bind_addr);
-    epn_bind_addr = 0;
+    epn_bind_addr = NULL;
   }
 }

@@ -147,7 +147,7 @@ static int client_fd_is_ready(/*void * key, */void * val, void * data)
     (*cnt)++;
     ret = 1;
   }
-  cnt = 0;
+  cnt = NULL;
   pc = NULL;
   return ret;
 }
@@ -156,7 +156,7 @@ static int find_ready_client()
 {
   int cnt = 0;
   struct rb_traverser trav;
-  PCLIENT pc = 0;
+  PCLIENT pc = NULL;
   for (pc = (PCLIENT)rb_t_first(&trav, fd_tree);
        pc && !cnt;
        pc = (PCLIENT)rb_t_next(&trav))
@@ -264,12 +264,12 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
   int ret = 0;
   int n = 0;
   int ok = 1;
-  PQMSG qmsg = 0;
+  PQMSG qmsg = NULL;
   struct timeval now = { 0, 0 };
   int bufsz = epn_get_client_buf_sz();
   int bytes_to_recv = (bufsz - pc->ri);
   int exp = 0;
-  int *pfd = 0;
+  int *pfd = NULL;
 
   if (pc->readable) {
     n = recv(pc->fd, &pc->buf[pc->ri], bytes_to_recv, 0);
@@ -280,7 +280,7 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
         pfd = (int *)malloc(sizeof(int));
         (*pfd) = pc->fd;
         list_add_to_tail(l, pfd);
-        pfd = 0;
+        pfd = NULL;
         ok = 0;
       }
       else
@@ -291,7 +291,7 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
       pfd = (int *)malloc(sizeof(int));
       (*pfd) = pc->fd;
       list_add_to_tail(l, pfd);
-      pfd = 0;
+      pfd = NULL;
       ok = 0;
       break;
     default:
@@ -305,7 +305,7 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
           pfd = (int *)malloc(sizeof(int));
           (*pfd) = pc->fd;
           list_add_to_tail(l, pfd);
-          pfd = 0;
+          pfd = NULL;
           ok = 0;
         }
         else {
@@ -343,7 +343,7 @@ static int trav_fd_svc_ready(PCLIENT pc, list *l)
           pfd = (int *)malloc(sizeof(int));
           (*pfd) = pc->fd;
           list_add_to_tail(l, pfd);
-          pfd = 0;
+          pfd = NULL;
         }
         break;
       case 0:
@@ -392,7 +392,7 @@ static void *thread_entry_point(void *arg)
   list l = LIST_INITIALIZER;
   sigset_t sigmask, origmask;
   struct rb_traverser trav;
-  lnode *ln = 0;
+  lnode *ln = NULL;
 
   if (mask_sigs())
     return (void *)-1;
@@ -559,7 +559,6 @@ void epn_set_client_accepted_cb(int (*callback)(epn_client_key key))
   epn_client_accepted_cb = callback;
 }
 
-/*int epn_send_to_client(epn_client_key key, PMSG msg)*/
 int epn_send_to_client(epn_client_key key, const PMSG msg,
                        const unsigned int ttl)
 {
@@ -593,7 +592,7 @@ int epn_send_to_client(epn_client_key key, const PMSG msg,
     return -1;
   }
 
-  pc = 0;
+  pc = NULL;
   return 0;
 }
 

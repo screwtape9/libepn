@@ -31,7 +31,7 @@ int sock_close(int *fd)
 int sock_bind(int *fd, unsigned short port, const char *addr)
 {
   struct sockaddr_in sa;
-  struct hostent *host = 0;
+  struct hostent *host = NULL;
 
   memset(&sa, 0, sizeof(sa));
   sa.sin_family = AF_INET;
@@ -43,7 +43,7 @@ int sock_bind(int *fd, unsigned short port, const char *addr)
       host = gethostbyname(addr);
       if (host) {
         sa.sin_addr.s_addr = ((struct in_addr *)host->h_addr)->s_addr;
-        host = 0;
+        host = NULL;
       }
       else
         return -1;
@@ -92,7 +92,7 @@ int sock_send(int *fd, void *buf, int len, int timeout_secs)
       rem -= n;
     }
   }
-  p = 0;
+  p = NULL;
   return (len - rem);  
 }
 
@@ -113,7 +113,7 @@ int sock_connect(int *fd, const char *host, unsigned short port,
 {
   int n = 0;
   struct sockaddr_in addr;
-  struct hostent *lphost = 0;
+  struct hostent *lphost = NULL;
   fd_set writefds;
   struct timeval timeout;
   
@@ -124,7 +124,7 @@ int sock_connect(int *fd, const char *host, unsigned short port,
     lphost = gethostbyname(host);
     if (lphost) {
       addr.sin_addr.s_addr = ((struct in_addr *)lphost->h_addr)->s_addr;
-      lphost = 0;
+      lphost = NULL;
     }
     else
       return -1;

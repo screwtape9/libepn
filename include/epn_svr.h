@@ -75,7 +75,6 @@ void epn_set_client_accepted_cb(int (*callback)(epn_client_key key));
  *  to send the msg out before dropping it.
  *  \return
  */
-/*int epn_send_to_client(epn_client_key key, PMSG msg);*/
 int epn_send_to_client(epn_client_key key, const PMSG msg,
                        const unsigned int ttl);
 

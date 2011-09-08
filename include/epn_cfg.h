@@ -10,7 +10,9 @@ extern "C" {
  */
 
 /*! \fn void epn_init(const char *bind_addr, const unsigned short bind_port,
- *                    const unsigned int est_events)
+ *                    const unsigned int est_events, const unsigned int client_buf_sz,
+ *                    const unsigned int one_client_per_ip,
+ *                    const unsigned int queue_max_msgs)
  *  \brief Initializes the epn library.
  *
  *  Sets the IP address and port on which to bind and listen for incoming
@@ -25,7 +27,7 @@ extern "C" {
  *  \param[in] one_client_per_ip Limit one client connection per IP address.
  *  \param[in] queue_max_msgs Max number of messages that can be queued per
  *  client. If this is set to 1, the incoming message to be queued will replace
- *  the currently queued message.
+ *  the currently queued message, if one exists.
  *  \return none
  */
 void epn_init(const char *bind_addr, const unsigned short bind_port,
@@ -65,11 +67,13 @@ unsigned int epn_get_client_buf_sz();
  */
 unsigned int epn_get_one_client_per_ip();
 
-/*! \fn unsigned int epn_get_one_client_per_ip()
- *  \brief 
- *  \return 
+/*! \fn unsigned int epn_get_queue_max_msgs()
+ *  \brief Returns the max number of outbound MSGs that can be queued up for a
+ *  particular client.
+ *  \return The max number of outbound MSGs that can be queued up for a
+ *  particular client.
  */
-unsigned int epn_get_one_client_per_ip();
+unsigned int epn_get_queue_max_msgs();
 
 /*! \fn void epn_cleanup()
  *  \brief Unitializes the epn library.

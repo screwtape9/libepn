@@ -3,7 +3,7 @@
 
 void list_init(list *l)
 {
-  l->head = l->tail = 0;
+  l->head = l->tail = NULL;
 }
 
 int list_item_cnt(list *l)
@@ -30,27 +30,27 @@ int list_add_to_tail(list *l, void *item)
     node->prev = l->tail;
     l->tail = node;
   }
-  node = 0;
+  node = NULL;
   return 0;
 }
 
 int list_remove_from_head(list *l)
 {
-  lnode *tmp = 0;
+  lnode *tmp = NULL;
   if (!l->head)
     return 1;
   if (l->head == l->tail) {
     free(l->head->pitem);
     free(l->head);
-    l->head = l->tail = 0;
+    l->head = l->tail = NULL;
   }
   else {
     tmp = l->head;
     l->head = l->head->next;
-    l->head->prev = 0;
+    l->head->prev = NULL;
     free(tmp->pitem);
     free(tmp);
-    tmp = 0;
+    tmp = NULL;
   }
   return 0;
 }
@@ -62,12 +62,12 @@ int list_is_empty(list *l)
 
 void list_free(list *l)
 {
-  lnode *curr = l->head, *tmp = 0;
+  lnode *curr = l->head, *tmp = NULL;
   while (curr) {
     tmp = curr;
     curr = curr->next;
     free(tmp->pitem);
     free(tmp);
   }
-  curr = tmp = 0;
+  curr = tmp = NULL;
 }
