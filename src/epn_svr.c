@@ -164,12 +164,41 @@ static int find_ready_client()
   return cnt;
 }
 
+void free_q_msg(void * data, void * user_data)
+{
+  PMSG msg = (PMSG)data;
+  free(msg);
+  msg = NULL;
+}
+
+void free_client(PCLIENT *pc)
+{
+  epn_client_key key = { 0, 0 };
+
+  printf("free_client() fd %d\n", (*pc)->fd);
+
+  rb_delete(fd_tree, (*pc));
+  if (epn_get_one_client_per_ip())
+    rb_delete(ip_tree, (*pc));
+  rb_delete(key_tree, (*pc));
+
+  sock_close(&(*pc)->fd);
+  queue_free(&(*pc)->msgq);
+
+  key = (*((epn_client_key *)&(*pc)->key));
+  free((*pc));
+  (*pc) = NULL;
+
+  if (epn_client_closed_cb)
+    (*epn_client_closed_cb)(key);
+}
+
 static int accept_client()
 {
   int clientfd = 0;
   struct sockaddr_in addr;
   struct epoll_event ev = { 0, { 0 } };
-  PCLIENT pc = NULL;
+  PCLIENT pc = NULL, dup = NULL;
   
   memset(&addr, 0, sizeof(addr));
   if (sock_accept(&svrfd, &clientfd, (struct sockaddr *)&addr) == -1) {
@@ -198,8 +227,14 @@ static int accept_client()
         gettimeofday(&pc->key, 0);
         pc->readable = pc->writable = 1;
         rb_insert(fd_tree, pc);
-        if (epn_get_one_client_per_ip())
+        if (epn_get_one_client_per_ip()) {
+          dup = (PCLIENT)rb_find(ip_tree, pc);
+          if (dup) {
+            free_client(&dup);
+            dup = NULL;
+          }
           rb_insert(ip_tree, pc);
+        }
         pthread_mutex_lock(&mutex);
         rb_insert(key_tree, pc);
         pthread_mutex_unlock(&mutex);
@@ -210,35 +245,6 @@ static int accept_client()
     }
   }
   return 0;
-}
-
-void free_q_msg(void * data, void * user_data)
-{
-  PMSG msg = (PMSG)data;
-  free(msg);
-  msg = NULL;
-}
-
-void free_client(PCLIENT *pc)
-{
-  epn_client_key key = { 0, 0 };
-
-  printf("free_client() fd %d\n", (*pc)->fd);
-
-  rb_delete(fd_tree, (*pc));
-  if (epn_get_one_client_per_ip())
-    rb_delete(ip_tree, (*pc));
-  rb_delete(key_tree, (*pc));
-
-  sock_close(&(*pc)->fd);
-  queue_free(&(*pc)->msgq);
-
-  key = (*((epn_client_key *)&(*pc)->key));
-  free((*pc));
-  (*pc) = NULL;
-
-  if (epn_client_closed_cb)
-    (*epn_client_closed_cb)(key);
 }
 
 void free_tree_client_item(void *item, void *param)
