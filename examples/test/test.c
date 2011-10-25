@@ -24,7 +24,7 @@ int msg_rcvd_cb(PMSG msg, epn_client_key key)
   memcpy(pkey->pmsg, msg, msg->len);
   pthread_mutex_lock(&mutex);
   queue_push(&msgs, (void *)pkey);
-  //printf("msg_rcvd_cb() queue'd up msg\n");
+  /*printf("msg_rcvd_cb() queue'd up msg\n");*/
   pthread_cond_signal(&cond);
   pthread_mutex_unlock(&mutex);
   pkey = NULL;
@@ -61,7 +61,7 @@ void *thread(void *arg)
       /*printf("RECVD:  %s\n", pkey->pmsg->buf);*/
       resp = malloc(pkey->pmsg->len);
       memcpy(resp, pkey->pmsg, pkey->pmsg->len);
-      if (epn_send_to_client(pkey->ckey, resp, 3000))
+      if (epn_svr_send_to_client(pkey->ckey, resp, 3000))
         printf("could not send back!\n");
       /*else
         printf("sending msg back to sender...\n");*/
@@ -88,18 +88,18 @@ int main(int argc, char *argv[])
   run = 1;
   pthread_create(&tid, 0, thread, 0);
 
-  epn_init("0.0.0.0", 5050, 32, 4096, 0, 1);
-  epn_set_msg_rcvd_cb(&msg_rcvd_cb);
-  epn_set_client_closed_cb(&client_closed_cb);
-  epn_set_client_accepted_cb(&client_accepted_cb);
-  epn_start();
-  epn_get_bind_addr(addr, sizeof(addr));
-  port = epn_get_bind_port();
+  epn_svr_init("0.0.0.0", 5050, 32, 4096, 0, 1);
+  epn_svr_set_msg_rcvd_cb(&msg_rcvd_cb);
+  epn_svr_set_client_closed_cb(&client_closed_cb);
+  epn_svr_set_client_accepted_cb(&client_accepted_cb);
+  epn_svr_start();
+  epn_svr_get_bind_addr(addr, sizeof(addr));
+  port = epn_svr_get_bind_port();
   printf("Listening on %s:%d\n", addr, port);
   do {
     scanf("%s", buf);
   } while (strcmp(buf, "bye"));
-  epn_stop();
+  epn_svr_stop();
   epn_cleanup();
 
   run = 0;

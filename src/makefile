@@ -4,10 +4,10 @@ CFLAGS=-c -Wall -fPIC
 INCLUDES=-I../include
 
 DBG_OBJDIR:=debug
-DBG_OBJ:=$(addprefix $(DBG_OBJDIR)/,epn_cfg.o epn_svr.o net.o list.o queue.o rb.o)
+DBG_OBJ:=$(addprefix $(DBG_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o net.o list.o queue.o rb.o)
 
 REL_OBJDIR:=release
-REL_OBJ:=$(addprefix $(REL_OBJDIR)/,epn_cfg.o epn_svr.o net.o list.o queue.o rb.o)
+REL_OBJ:=$(addprefix $(REL_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o net.o list.o queue.o rb.o)
 
 $(DBG_OBJDIR)/%.o: %.c
 	$(CC) $(CFLAGS) -g $(INCLUDES) -o $@ $<

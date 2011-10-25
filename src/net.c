@@ -112,6 +112,7 @@ int sock_connect(int *fd, const char *host, unsigned short port,
                  int timeout_secs)
 {
   int n = 0;
+  socklen_t len = sizeof(n);
   struct sockaddr_in addr;
   struct hostent *lphost = NULL;
   fd_set writefds;
@@ -144,14 +145,9 @@ int sock_connect(int *fd, const char *host, unsigned short port,
       timeout.tv_usec = 0;
       
       n = select(((*fd) + 1), 0, &writefds, 0, &timeout);
-      
-      switch (n) {
-        case 1:
-          return (FD_ISSET((*fd), &writefds) ? 0 : -1);
-          break;
-        default:
-          return -1;
-          break;
+      if ((n > 0) && FD_ISSET((*fd), &writefds)) {
+        getsockopt((*fd), SOL_SOCKET, SO_ERROR, &n, &len);
+        return (n == 0) ? 0 : -1;
       }
     }
     else
@@ -159,6 +155,8 @@ int sock_connect(int *fd, const char *host, unsigned short port,
   }
   else
     return 0;
+
+  return -1;
 }
 
 int sock_reuseaddr(int *fd)
