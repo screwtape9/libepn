@@ -1,6 +1,6 @@
 %define major 1
 %define minor 2
-%define patchlevel 0
+%define patchlevel 1
 
 Name: libepn
 Version: %{major}.%{minor}.%{patchlevel}

@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
   run = 1;
   pthread_create(&tid, 0, thread, 0);
 
-  epn_svr_init("0.0.0.0", 5050, 32, 4096, 0, 1);
+  epn_svr_init("0.0.0.0", 5050, 64, 4096, 0, 1);
   epn_svr_set_msg_rcvd_cb(&msg_rcvd_cb);
   epn_svr_set_client_closed_cb(&client_closed_cb);
   epn_svr_set_client_accepted_cb(&client_accepted_cb);

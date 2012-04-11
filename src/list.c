@@ -69,5 +69,5 @@ void list_free(list *l)
     free(tmp->pitem);
     free(tmp);
   }
-  curr = tmp = NULL;
+  l->head = l->tail = curr = tmp = NULL;
 }

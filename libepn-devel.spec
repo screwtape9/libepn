@@ -1,6 +1,6 @@
 %define major 1
 %define minor 2
-%define patchlevel 0
+%define patchlevel 1
 
 %define __os_install_post %{nil}
 

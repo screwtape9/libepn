@@ -88,39 +88,41 @@ static void *clt_thread_entry_point(void *arg)
       reconnect = 0;
     }
 
-    sigemptyset(&sigmask);
-    sigaddset(&sigmask, SIGUSR1);
-    pthread_sigmask(SIG_SETMASK, &sigmask, &origmask);
-
-    pthread_mutex_lock(&clt_mutex);
-    client_is_ready = client_fd_is_ready(client, &notused);
-    pthread_mutex_unlock(&clt_mutex);
-
-    nfds = epoll_pwait(clt_ep, &clt_event, 1, (client_is_ready ? 0 : -1),
-                       &origmask);
-    pthread_sigmask(SIG_SETMASK, &origmask, NULL);
-    if (clt_run && (nfds == 1)) {
-      if (client->fd == clt_event.data.fd) {
-        client->readable = (clt_event.events & EPOLLIN);
-        client->writable = (clt_event.events & EPOLLOUT);
-      }
-      else
-        printf("Houston, we have a problem.\n");
-    }
     if (clt_run) {
-      list_init(&l);
+      sigemptyset(&sigmask);
+      sigaddset(&sigmask, SIGUSR1);
+      pthread_sigmask(SIG_SETMASK, &sigmask, &origmask);
+
       pthread_mutex_lock(&clt_mutex);
-      trav_clt_fd_svc_ready(client, &l);
-      if (l.head) {
-        /* cleanup connection */
-        sock_close(&client->fd);
-        queue_free(&client->msgq);
-        if (epn_clt_closed_cb)
-          (*epn_clt_closed_cb)();
-        reconnect = 1;
-      }
+      client_is_ready = client_fd_is_ready(client, &notused);
       pthread_mutex_unlock(&clt_mutex);
-      list_free(&l);
+
+      nfds = epoll_pwait(clt_ep, &clt_event, 1, (client_is_ready ? 0 : -1),
+                         &origmask);
+      pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+      if (clt_run && (nfds == 1)) {
+        if (client->fd == clt_event.data.fd) {
+          client->readable = (clt_event.events & EPOLLIN);
+          client->writable = (clt_event.events & EPOLLOUT);
+        }
+        else
+          printf("Houston, we have a problem.\n");
+      }
+      if (clt_run) {
+        list_init(&l);
+        pthread_mutex_lock(&clt_mutex);
+        trav_clt_fd_svc_ready(client, &l);
+        if (l.head) {
+          /* cleanup connection */
+          sock_close(&client->fd);
+          queue_free(&client->msgq);
+          if (epn_clt_closed_cb)
+            (*epn_clt_closed_cb)();
+          reconnect = 1;
+        }
+        pthread_mutex_unlock(&clt_mutex);
+        list_free(&l);
+      }
     }
   }
 
