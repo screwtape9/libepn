@@ -3,7 +3,11 @@
 
 #include <time.h>
 #include <netinet/in.h>
+#if USE_GLIB
+#include <glib.h>
+#else /* USE_GLIB */
 #include "queue.h"
+#endif /* USE_GLIB */
 #include "epn_msg.h"
 
 #ifdef __cplusplus
@@ -15,7 +19,11 @@ typedef struct _client {
   int fd;
   struct timeval key;
   int ri;
+#if USE_GLIB
+  GQueue *msgq;
+#else /* USE_GLIB */
   queue msgq;
+#endif /* USE_GLIB */
   int readable;
   int writable;
   int sent;

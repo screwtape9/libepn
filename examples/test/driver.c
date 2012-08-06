@@ -6,9 +6,12 @@
 #define __USE_GNU    /* For TIMESPEC_TO_TIMEVAL and TIMEVAL_TO_TIMESPEC */
 #include <sys/time.h>
 #include <pthread.h>
+#include <signal.h>
+#include <unistd.h>
 #include "lorem.h"
 #include "epn_cfg.h"
 #include "epn_clt.h"
+#include "printsig.h"
 
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
@@ -16,6 +19,61 @@ static int rc = 0, num_recvd_msgs = 0, msg_recvd = 0, run = 1, is_connected = 0;
 static unsigned short len_recvd = 0;
 static struct timeval start = { 0, 0 };
 static unsigned int avg, totals[4098];
+
+static void sig_handler(int sig)
+{
+  print_sig_desc(sig);
+  write(STDOUT_FILENO, "Exiting...\n", 12);
+  if ((sig == SIGINT) || (sig == SIGTERM))
+    _exit(0);
+  else
+    _exit(1);
+}
+
+static int handle_signals()
+{
+  sigset_t set;
+  struct sigaction act;
+
+  if(sigfillset(&set) == -1)
+    return -1;
+  if(pthread_sigmask(SIG_SETMASK, &set, NULL) == -1)
+    return -1;
+  memset(&act, 0, sizeof(act));
+  if(sigfillset(&act.sa_mask) == -1)
+    return -1;
+  act.sa_handler = SIG_IGN;
+  if(sigaction(SIGHUP, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGQUIT, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGPIPE, &act, NULL) == -1)
+    return -1;
+  act.sa_handler = sig_handler;
+  if(sigaction(SIGINT, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGTERM, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGBUS, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGFPE, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGILL, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGSEGV, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGSYS, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGXCPU, &act, NULL) == -1)
+    return -1;
+  if(sigaction(SIGXFSZ, &act, NULL) == -1)
+    return -1;
+  if(sigemptyset(&set) == -1)
+    return -1;
+  if(pthread_sigmask(SIG_SETMASK, &set, NULL) == -1)
+    return -1;
+  return 0;
+}
 
 static int get_rand(double x, double y)
 {
@@ -84,18 +142,28 @@ int main(int argc, char *argv[])
   PMSG pmsg = (PMSG)buf;
   int n = 0, loop = 0, i = 0;
   struct timespec time_to_wait = { 0, 0 };
+  struct timeval lstart = { 0, 0 };
+  struct timeval now = { 0, 0 };
+  struct timeval diff = { 0, 0 };
 
   if (argc != 3) {
     printf("usage: %s <host> <port>\n", argv[0]);
     return -1;
   }
 
+  if (handle_signals()) {
+    printf("Failed to set up signal handling.\n");
+    return -1;
+  }
+
+  epn_get_ver_str(buf, sizeof(buf));
+  printf("Using %s\n", buf);
+
   srand(time(0));
 
   host = argv[1];
   port = (unsigned short)atoi(argv[2]);
 
-  gettimeofday(&start, 0);
   memset(totals, 0, sizeof(totals));
 
   epn_clt_init(host, port, 2048, 1);
@@ -109,14 +177,16 @@ int main(int argc, char *argv[])
     rc = pthread_cond_wait(&cond, &mutex);
   pthread_mutex_unlock(&mutex);
 
-  while (run) {
+  gettimeofday(&start, 0);
+  gettimeofday(&lstart, 0);
+  while (run && (num_recvd_msgs < 100000)) {
     memset(pmsg, 0, sizeof(buf));
     n = (get_rand(1.0, 26.0) - 1);
     strncpy(pmsg->buf, lorems[n], (sizeof(buf) - 2));
     pmsg->len = (unsigned short)(strlen(pmsg->buf) + 2 + 1);
     pthread_mutex_lock(&mutex);
     rc = msg_recvd = 0;
-    epn_clt_send(pmsg, 3);
+    epn_clt_send(pmsg, 3000);
     set_time_to_wait(&time_to_wait, 1, 0);
     while (run && is_connected && !msg_recvd && !rc)
       rc = pthread_cond_timedwait(&cond, &mutex, &time_to_wait);
@@ -165,6 +235,9 @@ int main(int argc, char *argv[])
       }
     }
   }
+  gettimeofday(&now, 0);
+  timersub(&now, &lstart, &diff);
+  printf("Time:  %lds %ldms\n", diff.tv_sec, diff.tv_usec);
 
   epn_clt_stop();
   epn_cleanup();

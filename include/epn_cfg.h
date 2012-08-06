@@ -131,6 +131,14 @@ unsigned int epn_clt_get_client_buf_sz();
  */
 unsigned int epn_clt_get_queue_max_msgs();
 
+/*! \fn void epn_get_ver_str(char *buf, int sz)
+ *  \brief Gets the library version string.
+ *  \param[out] buf The buffer in which to store the string.
+ *  \param[in] sz The size of the buffer.
+ *  \return none
+ */
+void epn_get_ver_str(char *buf, int sz);
+
 #ifdef __cplusplus
 }
 #endif

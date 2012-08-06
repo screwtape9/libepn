@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "epn_cfg.h"
 
 static char *epn_svr_bind_addr = NULL;
@@ -127,4 +128,9 @@ unsigned int epn_clt_get_client_buf_sz()
 unsigned int epn_clt_get_queue_max_msgs()
 {
   return epn_clt_queue_max_msgs;
+}
+
+void epn_get_ver_str(char *buf, int sz)
+{
+  snprintf(buf, sz, "libepn %d.%d.%d", MAJOR_VERSION, MINOR_VERSION, PATCH_LEVEL);
 }
