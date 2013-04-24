@@ -6,7 +6,7 @@ else
 CFLAGS=-Wall -g
 endif
 
-LIBEPN=../../lib/libepn.1.3.0.a
+LIBEPN=../../lib/libepn.1.3.1.a
 ifeq ($(USE_GLIB),1)
 ifeq ($(ARCH),x86_64)
 INCLUDES=-I../../include -I/usr/include/glib-2.0 -I/usr/lib64/glib-2.0/include
