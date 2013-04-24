@@ -9,19 +9,19 @@ INCLUDES=-I../include -I/usr/include/glib-2.0 -I/usr/lib/glib-2.0/include
 endif
 
 DBG_OBJDIR:=debug
-DBG_OBJ:=$(addprefix $(DBG_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o net.o)
+DBG_OBJ:=$(addprefix $(DBG_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o epn_def.o net.o)
 
 REL_OBJDIR:=release
-REL_OBJ:=$(addprefix $(REL_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o net.o)
+REL_OBJ:=$(addprefix $(REL_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o epn_def.o net.o)
 else
 CFLAGS=-c -Wall -fPIC -DUSE_GLIB=0 -DMAJOR_VERSION=$(MAJOR_VERSION) -DMINOR_VERSION=$(MINOR_VERSION) -DPATCH_LEVEL=$(PATCH_LEVEL)
 INCLUDES=-I../include
 
 DBG_OBJDIR:=debug
-DBG_OBJ:=$(addprefix $(DBG_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o net.o list.o queue.o rb.o)
+DBG_OBJ:=$(addprefix $(DBG_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o epn_def.o net.o list.o queue.o rb.o)
 
 REL_OBJDIR:=release
-REL_OBJ:=$(addprefix $(REL_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o net.o list.o queue.o rb.o)
+REL_OBJ:=$(addprefix $(REL_OBJDIR)/,epn_cfg.o epn_svr.o epn_clt.o epn_err.o epn_def.o net.o list.o queue.o rb.o)
 endif
 
 $(DBG_OBJDIR)/%.o: %.c

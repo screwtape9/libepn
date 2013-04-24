@@ -74,6 +74,14 @@ int mask_sigs()
   return 0;
 }
 
+void set_opt(PCLIENT p, unsigned int opt, int val)
+{
+  if (val)
+    p->status |= opt;
+  else
+    p->status &= ~opt;
+}
+
 #if USE_GLIB
 static gint fd_tree_cmp(gconstpointer a, gconstpointer b)
 {
@@ -128,9 +136,9 @@ int client_fd_is_ready(void *val, void *data)
   PCLIENT pc = (PCLIENT)val;
   int *cnt = (int *)data;
 #if USE_GLIB
-  if (pc->readable || (pc->writable && !g_queue_is_empty(pc->msgq))) {
+  if (EPN_IS_READABLE(pc) || (EPN_IS_WRITABLE(pc) && !g_queue_is_empty(pc->msgq))) {
 #else /* USE_GLIB */
-  if (pc->readable || (pc->writable && !queue_is_empty(&pc->msgq))) {
+  if (EPN_IS_READABLE(pc) || (EPN_IS_WRITABLE(pc) && !queue_is_empty(&pc->msgq))) {
 #endif /* USE_GLIB */
     (*cnt)++;
     ret = 1;
@@ -233,7 +241,8 @@ static int accept_client()
         pc->ip = addr.sin_addr.s_addr;
         pc->fd = clientfd;
         gettimeofday(&pc->key, 0);
-        pc->readable = pc->writable = 1;
+        EPN_SET_READABLE(pc);
+        EPN_SET_WRITABLE(pc);
 #if USE_GLIB
         g_tree_insert(g_fd_tree, &pc->fd, pc);
 #else /* USE_GLIB */
@@ -305,7 +314,7 @@ int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt)
   int exp = 0;
   int *pfd = NULL;
 
-  if (pc->readable) {
+  if (EPN_IS_READABLE(pc)) {
     n = recv(pc->fd, &pc->buf[pc->ri], bytes_to_recv, 0);
     switch (n) {
     case -1:
@@ -322,7 +331,7 @@ int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt)
         ok = 0;
       }
       else
-        pc->readable = 0;
+        EPN_CLEAR_READABLE(pc);
       break;
     case 0:
       /*printf("fd %d has been closed\n", pc->fd);*/
@@ -338,7 +347,7 @@ int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt)
       break;
     default:
       if (n < bytes_to_recv)
-        pc->readable = 0;
+        EPN_CLEAR_READABLE(pc);
       pc->ri += n;
       if (pc->ri > 1) {
         exp = (int)(*((unsigned short *)pc->buf));
@@ -371,10 +380,10 @@ int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt)
   }
   
 #if USE_GLIB
-  if (ok && pc->writable && !g_queue_is_empty(pc->msgq)) {
+  if (ok && EPN_IS_WRITABLE(pc) && !g_queue_is_empty(pc->msgq)) {
     qmsg = g_queue_peek_head(pc->msgq);
 #else /* USE_GLIB */
-  if (ok && pc->writable && !queue_is_empty(&pc->msgq)) {
+  if (ok && EPN_IS_WRITABLE(pc) && !queue_is_empty(&pc->msgq)) {
     queue_peek(&pc->msgq, (void **)&qmsg);
 #endif /* USE_GLIB */
     gettimeofday(&now, 0);
@@ -390,7 +399,7 @@ int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt)
       queue_pop(&pc->msgq);
 #endif /* USE_GLIB */
       /*if (queue_is_empty(&pc->msgq))
-        pc->writable = 0;*/
+        EPN_CLEAR_WRITABLE(pc);*/
     }
     else {
       n = send(pc->fd, &((char *)&qmsg->msg)[pc->sent],
@@ -398,7 +407,7 @@ int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt)
       switch (n) {
       case -1:
         if (errno == EAGAIN)
-          pc->writable = 0;
+          EPN_CLEAR_WRITABLE(pc);
         else {
           perror("send()");
 #if USE_GLIB
@@ -517,8 +526,8 @@ static void *thread_entry_point(void *arg)
         pc = (PCLIENT)rb_find(fd_tree, &c);
 #endif /* USE_GLIB */
         if (pc) {
-          pc->readable = (events[i].events & EPOLLIN);
-          pc->writable = (events[i].events & EPOLLOUT);
+          set_opt(pc, fd_readable, (events[i].events & EPOLLIN));
+          set_opt(pc, fd_writable, (events[i].events & EPOLLOUT));
           pc = NULL;
         }
         else /* what the hell!? */
@@ -687,7 +696,7 @@ void epn_svr_set_client_accepted_cb(int (*callback)(epn_client_key key))
 }
 
 int epn_svr_send_to_client(epn_client_key key, const PMSG msg,
-                       const unsigned int ttl)
+                           const unsigned int ttl)
 {
   PQMSG qmsg = NULL;
   PCLIENT pc = NULL;

@@ -41,6 +41,7 @@ extern int trav_fd_svc_ready(PCLIENT pc, list *l, int for_clt);
 extern int client_fd_is_ready(void *val, void *data);
 #endif /* USE_GLIB */
 extern int mask_sigs();
+extern void set_opt(PCLIENT p, unsigned int opt, int val);
 
 #if USE_GLIB
 static int trav_clt_fd_svc_ready(PCLIENT pc, GSList **l)
@@ -62,8 +63,8 @@ static int clt_connect_to_host()
 
 #if USE_GLIB
   memset(client, 0, offsetof(CLIENT, msgq));
-  memset(&client->readable, 0, ((sizeof(CLIENT) + epn_clt_get_client_buf_sz() - 1) -
-                               offsetof(CLIENT, readable)));
+  memset(&client->status, 0, ((sizeof(CLIENT) + epn_clt_get_client_buf_sz() - 1) -
+                               offsetof(CLIENT, status)));
 #else /* USE_GLIB */
   memset(client, 0, (sizeof(CLIENT) + epn_clt_get_client_buf_sz() - 1));
 #endif /* USE_GLIB */
@@ -74,7 +75,8 @@ static int clt_connect_to_host()
         ev.events = (EPOLLIN | EPOLLOUT | EPOLLET);
         ev.data.fd = client->fd;
         if (!epoll_ctl(clt_ep, EPOLL_CTL_ADD, client->fd, &ev)) {
-          client->readable = client->writable = 1;
+          EPN_SET_READABLE(client);
+          EPN_SET_WRITABLE(client);
           if (epn_clt_connected_cb)
             (*epn_clt_connected_cb)();
           return 0;
@@ -129,8 +131,8 @@ static void *clt_thread_entry_point(void *arg)
       pthread_sigmask(SIG_SETMASK, &origmask, NULL);
       if (clt_run && (nfds == 1)) {
         if (client->fd == clt_event.data.fd) {
-          client->readable = (clt_event.events & EPOLLIN);
-          client->writable = (clt_event.events & EPOLLOUT);
+          set_opt(client, fd_readable, (clt_event.events & EPOLLIN));
+          set_opt(client, fd_writable, (clt_event.events & EPOLLOUT));
         }
         else
           printf("Houston, we have a problem.\n");

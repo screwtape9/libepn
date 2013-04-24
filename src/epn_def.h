@@ -14,6 +14,16 @@
 extern "C" {
 #endif
 
+#define EPN_IS_READABLE(p) (p->status & fd_readable)
+#define EPN_IS_WRITABLE(p) (p->status & fd_writable)
+#define EPN_SET_READABLE(p) set_opt(p, fd_readable, 1)
+#define EPN_SET_WRITABLE(p) set_opt(p, fd_writable, 1)
+#define EPN_CLEAR_READABLE(p) set_opt(p, fd_readable, 0)
+#define EPN_CLEAR_WRITABLE(p) set_opt(p, fd_writable, 0)
+
+extern const unsigned int fd_readable;
+extern const unsigned int fd_writable;
+
 typedef struct _client {
   in_addr_t ip;
   int fd;
@@ -24,8 +34,7 @@ typedef struct _client {
 #else /* USE_GLIB */
   queue msgq;
 #endif /* USE_GLIB */
-  int readable;
-  int writable;
+  int status;
   int sent;
   char buf[1];
 } CLIENT, *PCLIENT;
